@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Corrida dos Candidatos - Brasil</title>
+    <style>
+        /* Reset e Estilos Gerais */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 12px;
+            overflow: hidden;
+            color: #f8fafc;
+        }
+
+        /* Container Principal do Jogo */
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 840px;
+            aspect-ratio: 2 / 1;
+            max-height: 85vh;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(255, 255, 255, 0.18);
+            background-color: #38bdf8;
+        }
+
+        canvas#gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Telas Sobrepostas (Início, Vitória, Derrota) */
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 20;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .badge-tag {
+            padding: 3px 12px;
+            border-radius: 9999px;
+            background: rgba(250, 204, 21, 0.18);
+            color: #fde047;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border: 1px solid rgba(250, 204, 21, 0.4);
+            margin-bottom: 6px;
+        }
+
+        .title-main {
+            font-size: clamp(1.25rem, 3vw, 1.85rem);
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle-main {
+            font-size: clamp(0.75rem, 1.6vw, 0.88rem);
+            color: #cbd5e1;
+            max-width: 480px;
+            margin-top: 4px;
+            line-height: 1.35;
+        }
+
+        /* Grid de Seleção de Candidatos */
+        .candidate-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            width: 100%;
+            max-width: 540px;
+            margin: 12px 0 14px 0;
+        }
+
+        .candidate-card {
+            background: rgba(30, 41, 59, 0.92);
+            border: 2px solid rgba(148, 163, 184, 0.35);
+            border-radius: 14px;
+            padding: 10px;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-2px);
+            border-color: #fbbf24;
+        }
+
+        .candidate-card.selected {
+            background: rgba(30, 58, 138, 0.65);
+            border-color: #facc15;
+            box-shadow: 0 0 22px rgba(250, 204, 21, 0.38);
+        }
+
+        .avatar-preview {
+            width: 56px;
+            height: 68px;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            display: block;
+        }
+
+        .candidate-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #ffffff;
+        }
+
+        .candidate-desc {
+            font-size: 0.72rem;
+            color: #cbd5e1;
+            line-height: 1.25;
+        }
+
+        /* Botões de Ação */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
+            color: #0f172a;
+            font-weight: 800;
+            padding: 10px 26px;
+            border-radius: 9999px;
+            border: none;
+            font-size: 0.98rem;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(234, 179, 8, 0.42);
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.04);
+            filter: brightness(1.08);
+        }
+
+        .action-btn:active {
+            transform: scale(0.97);
+        }
+
+        .secondary-btn {
+            background: rgba(51, 65, 85, 0.92);
+            color: #f8fafc;
+            font-weight: 700;
+            padding: 10px 22px;
+            border-radius: 9999px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .secondary-btn:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+
+        .controls-hint {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* HUD Superior */
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-pill {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        }
+
+        .hud-votes {
+            color: #fde047;
+        }
+
+        .hud-region {
+            color: #6ee7b7;
+        }
+
+        /* Controles Touch na Tela */
+        #mobile-controls {
+            position: absolute;
+            bottom: 12px;
+            left: 14px;
+            right: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .touch-group {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 2px solid rgba(255, 255, 255, 0.42);
+            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.38);
+        }
+
+        .touch-btn:active, .touch-btn.pressed {
+            background: rgba(250, 204, 21, 0.88);
+            color: #0f172a;
+            border-color: #ffffff;
+            transform: scale(0.93);
+        }
+
+        .touch-btn.jump-btn {
+            width: 64px;
+            height: 64px;
+            background: rgba(234, 179, 8, 0.82);
+            color: #0f172a;
+            font-size: 0.82rem;
+            letter-spacing: 0.4px;
+        }
+
+        /* Responsividade Mobile */
+        @media (max-width: 620px) {
+            body {
+                padding: 0;
+            }
+            #game-wrapper {
+                border-radius: 0;
+                max-height: 100vh;
+                height: 78vh;
+                aspect-ratio: auto;
+            }
+            .hud-pill {
+                font-size: 0.72rem;
+                padding: 4px 8px;
+            }
+            .candidate-grid {
+                gap: 8px;
+                margin: 8px 0;
+            }
+            .candidate-card {
+                padding: 7px;
+            }
+            .avatar-preview {
+                width: 46px;
+                height: 56px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <!-- HUD Superior -->
+        <div id="hud" class="hidden">
+            <div class="hud-pill" id="candidate-display">Candidato: Silva</div>
+            <div class="hud-pill hud-votes" id="score-display">Votos: 0 / 50</div>
+            <div class="hud-pill hud-region" id="level-display">Região: Norte</div>
+            <div class="hud-pill" id="lives-display">Vidas: ❤️❤️❤️</div>
+        </div>
+
+        <!-- Tela Inicial: Seleção de Candidato -->
+        <div id="start-screen" class="overlay-screen">
+            <span class="badge-tag">Jogo Educativo 2D</span>
+            <h1 class="title-main">Corrida dos Candidatos - Brasil</h1>
+            <p class="subtitle-main">
+                Escolha seu candidato, colete <strong>50 votos</strong> pelas 5 regiões do Brasil e desvie das urnas bloqueadas, microfones e pilhas de documentos!
+            </p>
+
+            <div class="candidate-grid">
+                <!-- Card Candidato Silva -->
+                <div class="candidate-card selected" id="card-candidate-A" onclick="selectCandidate('A')">
+                    <canvas id="preview-canvas-A" class="avatar-preview" width="56" height="68"></canvas>
+                    <div class="candidate-name">Candidato Silva</div>
+                    <div class="candidate-desc">
+                        Terno Azul Marinho<br>Camisa Branca • Gravata Amarela
+                    </div>
+                </div>
+
+                <!-- Card Candidato Santos -->
+                <div class="candidate-card" id="card-candidate-B" onclick="selectCandidate('B')">
+                    <canvas id="preview-canvas-B" class="avatar-preview" width="56" height="68"></canvas>
+                    <div class="candidate-name">Candidato Santos</div>
+                    <div class="candidate-desc">
+                        Terno Cinza Escuro<br>Chapéu Panamá com Listra Vermelha
+                    </div>
+                </div>
+            </div>
+
+            <button id="start-game-btn" class="action-btn">Iniciar Campanha ▶</button>
+            <p class="controls-hint">
+                Teclado: <strong>Setas / WASD</strong> para mover • <strong>Espaço / Cima / W</strong> para pular
+            </p>
+        </div>
+
+        <!-- Tela de Derrota -->
+        <div id="game-over-screen" class="overlay-screen hidden">
+            <div style="font-size: 2.5rem; margin-bottom: 6px;">🚫</div>
+            <h2 class="title-main" style="color: #fb7185;">Fim de Campanha!</h2>
+            <p id="game-over-stats" class="subtitle-main" style="margin-top: 8px;">
+                Os obstáculos bloquearam seu caminho! Você coletou 0 votos.
+            </p>
+            <div class="btn-group">
+                <button id="retry-btn" class="action-btn">Jogar Novamente ↻</button>
+                <button id="menu-from-gameover-btn" class="secondary-btn">Trocar Candidato</button>
+            </div>
+        </div>
+
+        <!-- Tela de Vitória -->
+        <div id="win-screen" class="overlay-screen hidden">
+            <div style="font-size: 2.5rem; margin-bottom: 6px;">🏆🇧🇷</div>
+            <h2 class="title-main" style="color: #fde047;">Vitória Nacional!</h2>
+            <p id="win-stats" class="subtitle-main" style="margin-top: 8px;">
+                Parabéns! Você conquistou os 50 votos percorrendo todas as 5 regiões do Brasil!
+            </p>
+            <div class="btn-group">
+                <button id="play-again-btn" class="action-btn">Nova Campanha ↻</button>
+                <button id="menu-from-win-btn" class="secondary-btn">Trocar Candidato</button>
+            </div>
+        </div>
+
+        <!-- Controles Touch na Tela -->
+        <div id="mobile-controls" class="hidden">
+            <div class="touch-group">
+                <button class="touch-btn" id="btn-left" aria-label="Mover para Esquerda">◀</button>
+                <button class="touch-btn" id="btn-right" aria-label="Mover para Direita">▶</button>
+            </div>
+            <div class="touch-group">
+                <button class="touch-btn jump-btn" id="btn-jump" aria-label="Pular">PULAR</button>
+            </div>
+        </div>
+
+        <!-- Canvas Principal do Jogo -->
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. REFERÊNCIAS DO DOM E CANVAS
+        // ==========================================
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const startScreen = document.getElementById("start-screen");
+        const gameOverScreen = document.getElementById("game-over-screen");
+        const winScreen = document.getElementById("win-screen");
+        const hud = document.getElementById("hud");
+        const mobileControls = document.getElementById("mobile-controls");
+
+        const candidateDisplay = document.getElementById("candidate-display");
+        const scoreDisplay = document.getElementById("score-display");
+        const levelDisplay = document.getElementById("level-display");
+        const livesDisplay = document.getElementById("lives-display");
+        const gameOverStats = document.getElementById("game-over-stats");
+        const winStats = document.getElementById("win-stats");
+
+        // ==========================================
+        // 2. DADOS DOS CANDIDATOS E REGIÕES
+        // ==========================================
+        const candidates = {
+            A: {
+                name: "Candidato Silva",
+                shortName: "Silva",
+                suitColor: "#1E3A8A",     // Terno Azul Marinho
+                tieColor: "#FACC15",      // Gravata Amarela
+                hairColor: "#451A03",
+                hasHat: false
+            },
+            B: {
+                name: "Candidato Santos",
+                shortName: "Santos",
+                suitColor: "#374151",     // Terno Cinza Escuro
+                tieColor: "#DC2626",      // Gravata Vermelha
+                hairColor: "#E5E7EB",
+                hasHat: true,
+                hatColor: "#FEF3C7",      // Chapéu Panamá Creme
+                hatStripeColor: "#DC2626" // Listra Vermelha
+            }
+        };
+
+        let selectedCandidateKey = "A";
+
+        const regions = [
+            {
+                id: "norte",
+                name: "Norte",
+                skyTop: "#38BDF8",
+                skyBottom: "#BAE6FD",
+                groundColor: "#14532D",
+                groundTopColor: "#16A34A",
+                platColor: "#78350F",
+                platTopColor: "#22C55E",
+                targetScore: 10
+            },
+            {
+                id: "nordeste",
+                name: "Nordeste",
+                skyTop: "#F97316",
+                skyBottom: "#FDE047",
+                groundColor: "#D97706",
+                groundTopColor: "#FBBF24",
+                platColor: "#B45309",
+                platTopColor: "#FEF3C7",
+                targetScore: 20
+            },
+            {
+                id: "centro-oeste",
+                name: "Centro-Oeste",
+                skyTop: "#0284C7",
+                skyBottom: "#FEF08A",
+                groundColor: "#4D7C0F",
+                groundTopColor: "#84CC16",
+                platColor: "#713F12",
+                platTopColor: "#EAB308",
+                targetScore: 30
+            },
+            {
+                id: "sudeste",
+                name: "Sudeste",
+                skyTop: "#475569",
+                skyBottom: "#94A3B8",
+                groundColor: "#1E293B",
+                groundTopColor: "#64748B",
+                platColor: "#334155",
+                platTopColor: "#CBD5E1",
+                targetScore: 40
+            },
+            {
+                id: "sul",
+                name: "Sul",
+                skyTop: "#1D4ED8",
+                skyBottom: "#93C5FD",
+                groundColor: "#065F46",
+                groundTopColor: "#10B981",
+                platColor: "#475569",
+                platTopColor: "#E0F2FE",
+                targetScore: 50
+            }
+        ];
+
+        // ==========================================
+        // 3. VARIÁVEIS DE ESTADO E FÍSICA
+        // ==========================================
+        const GROUND_Y = 345;
+        const GOAL_VOTES = 50;
+
+        let isGameRunning = false;
+        let animationFrameId = null;
+        let score = 0;
+        let lives = 3;
+        let currentLevel = 0;
+        let baseSpeed = 4.2;
+        let frameCount = 0;
+        let invulnerableTimer = 0;
+        let regionBannerTimer = 0;
+        let obstacleCycleIndex = 0;
+
+        const keys = {
+            left: false,
+            right: false
+        };
+
+        const player = {
+            x: 90,
+            y: GROUND_Y - 54,
+            width: 34,
+            height: 54,
+            speed: 5.2,
+            dy: 0,
+            jumpPower: -13.2,
+            gravity: 0.62,
+            isGrounded: true
+        };
+
+        const platforms = [
+            { x: 190, y: 255, width: 135, height: 16 },
+            { x: 395, y: 195, width: 145, height: 16 },
+            { x: 605, y: 245, width: 135, height: 16 }
+        ];
+
+        let obstacles = [];
+        let votes = [];
+        let particles = [];
+        let bgDecorations = [];
+
+        // ==========================================
+        // 4. DESENHO DOS PERSONAGENS E AVATARES
+        // ==========================================
+        function drawCandidate(targetCtx, x, y, w, h, cand, walkPhase) {
+            targetCtx.save();
+
+            // Sombra no solo
+            targetCtx.fillStyle = "rgba(0, 0, 0, 0.22)";
+            targetCtx.beginPath();
+            targetCtx.ellipse(x + w / 2, y + h, w * 0.45, 4, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            // Pernas animadas (mesma cor do terno)
+            const legSwing = Math.sin(walkPhase) * 4;
+            targetCtx.fillStyle = cand.suitColor;
+            targetCtx.fillRect(x + 6, y + h - 16 + (legSwing > 0 ? -legSwing * 0.4 : 0), 8, 14);
+            targetCtx.fillRect(x + w - 14, y + h - 16 + (legSwing < 0 ? legSwing * 0.4 : 0), 8, 14);
+
+            // Sapatos pretos
+            targetCtx.fillStyle = "#0F172A";
+            targetCtx.fillRect(x + 5, y + h - 4, 10, 4);
+            targetCtx.fillRect(x + w - 15, y + h - 4, 10, 4);
+
+            // Tronco (Terno)
+            targetCtx.fillStyle = cand.suitColor;
+            targetCtx.beginPath();
+            targetCtx.roundRect(x + 4, y + 19, w - 8, h - 33, 4);
+            targetCtx.fill();
+
+            // Camisa Branca (V no peito)
+            targetCtx.fillStyle = "#FFFFFF";
+            targetCtx.beginPath();
+            targetCtx.moveTo(x + w / 2 - 5, y + 19);
+            targetCtx.lineTo(x + w / 2 + 5, y + 19);
+            targetCtx.lineTo(x + w / 2, y + 33);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            // Gravata
+            targetCtx.fillStyle = cand.tieColor;
+            targetCtx.fillRect(x + w / 2 - 2, y + 21, 4, 13);
+
+            // Braço frontal
+            targetCtx.fillStyle = cand.suitColor;
+            targetCtx.fillRect(x + w - 9, y + 21, 6, 14);
+            targetCtx.fillStyle = "#FDBA74";
+            targetCtx.fillRect(x + w - 9, y + 34, 6, 4);
+
+            // Cabeça / Rosto
+            targetCtx.fillStyle = "#FDBA74";
+            targetCtx.beginPath();
+            targetCtx.roundRect(x + 6, y + 3, w - 12, 17, 5);
+            targetCtx.fill();
+
+            // Olhos
+            targetCtx.fillStyle = "#0F172A";
+            targetCtx.fillRect(x + w - 12, y + 8, 2.5, 3);
+            targetCtx.fillRect(x + w - 18, y + 8, 2.5, 3);
+
+            // Sorriso
+            targetCtx.strokeStyle = "#7C2D12";
+            targetCtx.lineWidth = 1.5;
+            targetCtx.beginPath();
+            targetCtx.arc(x + w - 14, y + 14, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+            targetCtx.stroke();
+
+            // Cabelo ou Chapéu Panamá
+            if (cand.hasHat) {
+                // Copa do chapéu panamá creme
+                targetCtx.fillStyle = cand.hatColor;
+                targetCtx.beginPath();
+                targetCtx.roundRect(x + 5, y - 4, w - 10, 8, [4, 4, 0, 0]);
+                targetCtx.fill();
+
+                // Listra vermelha
+                targetCtx.fillStyle = cand.hatStripeColor;
+                targetCtx.fillRect(x + 5, y + 1, w - 10, 2.5);
+
+                // Aba larga do chapéu
+                targetCtx.fillStyle = cand.hatColor;
+                targetCtx.beginPath();
+                targetCtx.roundRect(x + 1, y + 3, w - 2, 3, 2);
+                targetCtx.fill();
+            } else {
+                // Cabelo penteado
+                targetCtx.fillStyle = cand.hairColor;
+                targetCtx.beginPath();
+                targetCtx.roundRect(x + 5, y + 1, w - 10, 6, [5, 5, 1, 1]);
+                targetCtx.fill();
+            }
+
+            targetCtx.restore();
+        }
+
+        function renderAvatarPreviews() {
+            const canvasA = document.getElementById("preview-canvas-A");
+            const ctxA = canvasA.getContext("2d");
+            ctxA.clearRect(0, 0, canvasA.width, canvasA.height);
+            drawCandidate(ctxA, 11, 8, 34, 54, candidates.A, 0);
+
+            const canvasB = document.getElementById("preview-canvas-B");
+            const ctxB = canvasB.getContext("2d");
+            ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
+            drawCandidate(ctxB, 11, 8, 34, 54, candidates.B, 0);
+        }
+
+        function selectCandidate(key) {
+            selectedCandidateKey = key;
+            document.getElementById("card-candidate-A").classList.toggle("selected", key === "A");
+            document.getElementById("card-candidate-B").classList.toggle("selected", key === "B");
+            if (!isGameRunning) {
+                drawStaticPreview();
+            }
+        }
+
+        // ==========================================
+        // 5. CENÁRIOS REGIONAIS DO BRASIL (5 REGIÕES)
+        // ==========================================
+        function initDecorations() {
+            bgDecorations = [];
+            for (let i = 0; i < 6; i++) {
+                bgDecorations.push({
+                    x: i * 160 + 30,
+                    heightFactor: 0.85 + (i % 3) * 0.2
+                });
+            }
+        }
+
+        function drawBackground(reg) {
+            // Gradiente do Céu
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+            skyGrad.addColorStop(0, reg.skyTop);
+            skyGrad.addColorStop(1, reg.skyBottom);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, GROUND_Y);
+
+            // Sol decorativo
+            ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            ctx.beginPath();
+            ctx.arc(690, 68, 34, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Elementos específicos de cada região com paralaxe
+            bgDecorations.forEach((item, idx) => {
+                if (isGameRunning) {
+                    item.x -= baseSpeed * 0.35;
+                    if (item.x < -120) {
+                        item.x = canvas.width + 60;
+                    }
+                }
+                const x = item.x;
+
+                if (reg.id === "norte") {
+                    // Floresta Amazônica: árvores densas
+                    ctx.fillStyle = "#713F12";
+                    ctx.fillRect(x + 18, GROUND_Y - 68, 12, 68);
+                    ctx.fillStyle = "#15803D";
+                    ctx.beginPath();
+                    ctx.arc(x + 24, GROUND_Y - 76, 30, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#22C55E";
+                    ctx.beginPath();
+                    ctx.arc(x + 12, GROUND_Y - 66, 20, 0, Math.PI * 2);
+                    ctx.arc(x + 36, GROUND_Y - 66, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (reg.id === "nordeste") {
+                    // Dunas douradas e Cactos
+                    ctx.fillStyle = "#F59E0B";
+                    ctx.beginPath();
+                    ctx.arc(x + 40, GROUND_Y + 10, 65, Math.PI, 0);
+                    ctx.fill();
+
+                    // Cacto mandacaru
+                    ctx.fillStyle = "#15803D";
+                    ctx.beginPath();
+                    ctx.roundRect(x + 18, GROUND_Y - 52, 10, 52, 4);
+                    ctx.roundRect(x + 8, GROUND_Y - 38, 12, 7, 3);
+                    ctx.roundRect(x + 8, GROUND_Y - 46, 7, 14, 3);
+                    ctx.roundRect(x + 26, GROUND_Y - 32, 12, 7, 3);
+                    ctx.roundRect(x + 31, GROUND_Y - 42, 7, 16, 3);
+                    ctx.fill();
+                } else if (reg.id === "centro-oeste") {
+                    // Chapadas no horizonte e árvores do Cerrado
+                    ctx.fillStyle = "#A16207";
+                    ctx.beginPath();
+                    ctx.moveTo(x - 20, GROUND_Y);
+                    ctx.lineTo(x + 5, GROUND_Y - 75);
+                    ctx.lineTo(x + 85, GROUND_Y - 75);
+                    ctx.lineTo(x + 110, GROUND_Y);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Árvore típica do cerrado
+                    ctx.fillStyle = "#78350F";
+                    ctx.fillRect(x + 40, GROUND_Y - 38, 8, 38);
+                    ctx.fillStyle = "#65A30D";
+                    ctx.beginPath();
+                    ctx.ellipse(x + 44, GROUND_Y - 42, 26, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (reg.id === "sudeste") {
+                    // Prédios urbanos com janelas iluminadas
+                    const bHeight = 75 + (idx % 3) * 32;
+                    const bWidth = 54;
+                    ctx.fillStyle = idx % 2 === 0 ? "#334155" : "#475569";
+                    ctx.fillRect(x, GROUND_Y - bHeight, bWidth, bHeight);
+
+                    ctx.fillStyle = "#FDE047";
+                    for (let wy = GROUND_Y - bHeight + 10; wy < GROUND_Y - 12; wy += 16) {
+                        ctx.fillRect(x + 10, wy, 10, 8);
+                        ctx.fillRect(x + 32, wy, 10, 8);
+                    }
+                } else if (reg.id === "sul") {
+                    // Montanhas azuis e Araucárias
+                    ctx.fillStyle = "#3B82F6";
+                    ctx.beginPath();
+                    ctx.moveTo(x - 30, GROUND_Y);
+                    ctx.lineTo(x + 45, GROUND_Y - 95);
+                    ctx.lineTo(x + 120, GROUND_Y);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Araucária (Pinheiro do Paraná)
+                    ctx.fillStyle = "#451A03";
+                    ctx.fillRect(x + 38, GROUND_Y - 68, 8, 68);
+                    ctx.fillStyle = "#065F46";
+                    ctx.beginPath();
+                    ctx.ellipse(x + 42, GROUND_Y - 68, 32, 9, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#047857";
+                    ctx.beginPath();
+                    ctx.ellipse(x + 42, GROUND_Y - 74, 20, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Solo Principal
+            ctx.fillStyle = reg.groundColor;
+            ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+
+            // Faixa superior do solo
+            ctx.fillStyle = reg.groundTopColor;
+            ctx.fillRect(0, GROUND_Y, canvas.width, 8);
+
+            // Rio Azul Animado na Região Norte
+            if (reg.id === "norte") {
+                ctx.fillStyle = "#0284C7";
+                ctx.fillRect(0, GROUND_Y + 18, canvas.width, 22);
+                ctx.fillStyle = "rgba(186, 230, 253, 0.55)";
+                for (let rx = 20; rx < canvas.width; rx += 110) {
+                    const waveOffset = isGameRunning ? (frameCount * 2.2) % 110 : 0;
+                    const drawX = (rx - waveOffset + canvas.width) % canvas.width;
+                    ctx.fillRect(drawX, GROUND_Y + 26, 44, 3);
+                }
+            }
+        }
+
+        function drawPlatforms(reg) {
+            platforms.forEach(plat => {
+                ctx.fillStyle = reg.platColor;
+                ctx.beginPath();
+                ctx.roundRect(plat.x, plat.y, plat.width, plat.height, 6);
+                ctx.fill();
+
+                ctx.fillStyle = reg.platTopColor;
+                ctx.beginPath();
+                ctx.roundRect(plat.x, plat.y, plat.width, 5, [6, 6, 0, 0]);
+                ctx.fill();
+            });
+        }
+
+        // ==========================================
+        // 6. COLETÁVEIS (VOTOS) E OBSTÁCULOS TEMÁTICOS
+        // ==========================================
+        function spawnVote() {
+            if (frameCount % 68 === 0) {
+                const possibleHeights = [
+                    GROUND_Y - 26,
+                    225,
+                    165,
+                    215
+                ];
+                const yPos = possibleHeights[Math.floor(Math.random() * possibleHeights.length)];
+                votes.push({
+                    x: canvas.width + 20,
+                    y: yPos,
+                    width: 26,
+                    height: 18,
+                    bobOffset: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function drawVote(v) {
+            const floatY = v.y + Math.sin(frameCount * 0.08 + v.bobOffset) * 3;
+            ctx.save();
+
+            // Cédula de Voto Dourada
+            ctx.fillStyle = "#FACC15";
+            ctx.strokeStyle = "#B45309";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(v.x, floatY, v.width, v.height, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            // Texto "VOTO"
+            ctx.fillStyle = "#78350F";
+            ctx.font = "bold 8px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("VOTO", v.x + v.width / 2, floatY + 12);
+
+            ctx.restore();
+        }
+
+        function spawnObstacle() {
+            const spawnInterval = Math.max(78, 125 - currentLevel * 9);
+            if (frameCount % spawnInterval === 0) {
+                const obstacleTypes = ["urn", "microphone", "documents"];
+                const type = obstacleTypes[obstacleCycleIndex % obstacleTypes.length];
+                obstacleCycleIndex++;
+
+                let width = 34;
+                let height = 40;
+
+                if (type === "urn") {
+                    width = 36;
+                    height = 38;
+                } else if (type === "microphone") {
+                    width = 28;
+                    height = 48;
+                } else if (type === "documents") {
+                    width = 38;
+                    height = 34;
+                }
+
+                obstacles.push({
+                    x: canvas.width + 20,
+                    y: GROUND_Y - height,
+                    width: width,
+                    height: height,
+                    type: type,
+                    speed: baseSpeed + Math.random() * 1.1
+                });
+            }
+        }
+
+        function drawObstacle(obs) {
+            if (obs.type === "urn") {
+                // 1. Urna Bloqueada (caixa escura com borda e X vermelho)
+                ctx.fillStyle = "#334155";
+                ctx.strokeStyle = "#EF4444";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 5);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = "#0F172A";
+                ctx.fillRect(obs.x + 5, obs.y + 5, obs.width - 10, obs.height - 10);
+
+                ctx.strokeStyle = "#EF4444";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(obs.x + 9, obs.y + 9);
+                ctx.lineTo(obs.x + obs.width - 9, obs.y + obs.height - 9);
+                ctx.moveTo(obs.x + obs.width - 9, obs.y + 9);
+                ctx.lineTo(obs.x + 9, obs.y + obs.height - 9);
+                ctx.stroke();
+            } else if (obs.type === "microphone") {
+                // 2. Microfone de Debate (globo prateado, pedestal e base vermelha)
+                const centerX = obs.x + obs.width / 2;
+
+                // Cabo vermelho
+                ctx.strokeStyle = "#DC2626";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(centerX, obs.y + 18);
+                ctx.quadraticCurveTo(obs.x + obs.width + 4, obs.y + 28, centerX + 6, obs.y + obs.height - 4);
+                ctx.stroke();
+
+                // Pedestal metálico
+                ctx.fillStyle = "#94A3B8";
+                ctx.fillRect(centerX - 2, obs.y + 12, 4, obs.height - 16);
+
+                // Base vermelha
+                ctx.fillStyle = "#DC2626";
+                ctx.beginPath();
+                ctx.roundRect(obs.x + 3, obs.y + obs.height - 6, obs.width - 6, 6, 3);
+                ctx.fill();
+
+                // Globo prateado
+                ctx.fillStyle = "#E2E8F0";
+                ctx.beginPath();
+                ctx.arc(centerX, obs.y + 8, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Faixa central do globo
+                ctx.fillStyle = "#1E293B";
+                ctx.fillRect(centerX - 7, obs.y + 7, 14, 2.5);
+            } else {
+                // 3. Pilha de Documentos (pastas empilhadas com fitas vermelhas)
+                const layers = 3;
+                const layerHeight = (obs.height - 2) / layers;
+
+                for (let i = 0; i < layers; i++) {
+                    const ly = obs.y + i * (layerHeight + 1);
+                    const offsetX = i % 2 === 0 ? 0 : 3;
+                    const layerW = obs.width - 3;
+
+                    ctx.fillStyle = i % 2 === 0 ? "#FEF3C7" : "#FFFFFF";
+                    ctx.strokeStyle = "#94A3B8";
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(obs.x + offsetX, ly, layerW, layerHeight, 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Fita vermelha
+                    ctx.fillStyle = "#DC2626";
+                    ctx.fillRect(obs.x + offsetX + 5, ly, 6, layerHeight);
+                }
+            }
+        }
+
+        // ==========================================
+        // 7. PARTÍCULAS E BANNER DE REGIÃO
+        // ==========================================
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.8) * 5,
+                    life: 24,
+                    color: color
+                });
+            }
+        }
+
+        function updateAndDrawParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.globalAlpha = p.life / 24;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+
+        function drawRegionBanner(reg) {
+            if (regionBannerTimer > 0) {
+                regionBannerTimer--;
+                const alpha = Math.min(1, regionBannerTimer / 25);
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
+                ctx.beginPath();
+                ctx.roundRect(canvas.width / 2 - 140, 56, 280, 38, 19);
+                ctx.fill();
+
+                ctx.fillStyle = "#FACC15";
+                ctx.font = "bold 16px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(`📍 Região ${reg.name}`, canvas.width / 2, 80);
+                ctx.restore();
+            }
+        }
+
+        // ==========================================
+        // 8. CONTROLES (TECLADO E TOUCH)
+        // ==========================================
+        function triggerJump() {
+            if (isGameRunning && player.isGrounded) {
+                player.dy = player.jumpPower;
+                player.isGrounded = false;
+                createParticles(player.x + player.width / 2, player.y + player.height, "#ffffff", 6);
+            }
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
+            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
+            if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+                if (isGameRunning) e.preventDefault();
+                triggerJump();
+            }
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
+            if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
+        });
+
+        function bindTouchButton(btnId, onPress, onRelease) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+
+            const startHandler = (e) => {
+                e.preventDefault();
+                btn.classList.add("pressed");
+                onPress();
+            };
+
+            const endHandler = (e) => {
+                e.preventDefault();
+                btn.classList.remove("pressed");
+                if (onRelease) onRelease();
+            };
+
+            btn.addEventListener("touchstart", startHandler, { passive: false });
+            btn.addEventListener("touchend", endHandler, { passive: false });
+            btn.addEventListener("touchcancel", endHandler, { passive: false });
+            btn.addEventListener("mousedown", startHandler);
+            btn.addEventListener("mouseup", endHandler);
+            btn.addEventListener("mouseleave", endHandler);
+        }
+
+        bindTouchButton("btn-left", () => { keys.left = true; }, () => { keys.left = false; });
+        bindTouchButton("btn-right", () => { keys.right = true; }, () => { keys.right = false; });
+        bindTouchButton("btn-jump", () => { triggerJump(); }, null);
+
+        // ==========================================
+        // 9. FLUXO DE TELAS E LOOP PRINCIPAL
+        // ==========================================
+        function updateHUD() {
+            const cand = candidates[selectedCandidateKey];
+            candidateDisplay.innerText = `Candidato: ${cand.shortName}`;
+            scoreDisplay.innerText = `Votos: ${score} / ${GOAL_VOTES}`;
+            levelDisplay.innerText = `Região: ${regions[currentLevel].name}`;
+
+            let hearts = "";
+            for (let i = 0; i < 3; i++) {
+                hearts += i < lives ? "❤️" : "🖤";
+            }
+            livesDisplay.innerText = `Vidas: ${hearts}`;
+        }
+
+        function startGame() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            startScreen.classList.add("hidden");
+            gameOverScreen.classList.add("hidden");
+            winScreen.classList.add("hidden");
+            hud.classList.remove("hidden");
+            mobileControls.classList.remove("hidden");
+
+            score = 0;
+            lives = 3;
+            currentLevel = 0;
+            baseSpeed = 4.2;
+            frameCount = 0;
+            invulnerableTimer = 0;
+            regionBannerTimer = 110;
+            obstacleCycleIndex = 0;
+
+            player.x = 90;
+            player.y = GROUND_Y - player.height;
+            player.dy = 0;
+            player.isGrounded = true;
+
+            obstacles = [];
+            votes = [];
+            particles = [];
+            keys.left = false;
+            keys.right = false;
+
+            initDecorations();
+            updateHUD();
+
+            isGameRunning = true;
+            gameLoop();
+        }
+
+        function returnToMenu() {
+            isGameRunning = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameOverScreen.classList.add("hidden");
+            winScreen.classList.add("hidden");
+            hud.classList.add("hidden");
+            mobileControls.classList.add("hidden");
+            startScreen.classList.remove("hidden");
+            currentLevel = 0;
+            drawStaticPreview();
+        }
+
+        function checkRectCollision(a, b) {
+            return (
+                a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y
+            );
+        }
+
+        function gameLoop() {
+            if (!isGameRunning) return;
+            frameCount++;
+
+            const currentRegion = regions[currentLevel];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Cenário e Plataformas
+            drawBackground(currentRegion);
+            drawPlatforms(currentRegion);
+
+            // 2. Movimentação Horizontal
+            if (keys.left && player.x > 10) {
+                player.x -= player.speed;
+            }
+            if (keys.right && player.x + player.width < canvas.width - 10) {
+                player.x += player.speed;
+            }
+
+            // 3. Física Vertical, Gravidade e Plataformas
+            const prevBottom = player.y + player.height;
+            player.y += player.dy;
+            player.isGrounded = false;
+
+            // Colisão com Plataformas (ao cair)
+            if (player.dy >= 0) {
+                for (const plat of platforms) {
+                    if (
+                        player.x + player.width - 6 > plat.x &&
+                        player.x + 6 < plat.x + plat.width &&
+                        prevBottom <= plat.y + 8 &&
+                        player.y + player.height >= plat.y
+                    ) {
+                        player.y = plat.y - player.height;
+                        player.dy = 0;
+                        player.isGrounded = true;
+                        break;
+                    }
+                }
+            }
+
+            // Colisão com o Chão
+            if (player.y + player.height >= GROUND_Y) {
+                player.y = GROUND_Y - player.height;
+                player.dy = 0;
+                player.isGrounded = true;
+            }
+
+            if (!player.isGrounded) {
+                player.dy += player.gravity;
+            }
+
+            // 4. Desenhar Jogador (com piscada se invulnerável)
+            if (invulnerableTimer > 0) {
+                invulnerableTimer--;
+            }
+            if (invulnerableTimer === 0 || Math.floor(invulnerableTimer / 4) % 2 === 0) {
+                const walkCycle = player.isGrounded ? frameCount * 0.25 : 0.6;
+                drawCandidate(ctx, player.x, player.y, player.width, player.height, candidates[selectedCandidateKey], walkCycle);
+            }
+
+            // 5. Gerar, Atualizar e Desenhar Votos
+            spawnVote();
+            for (let i = votes.length - 1; i >= 0; i--) {
+                const v = votes[i];
+                v.x -= baseSpeed * 0.85;
+
+                if (checkRectCollision(player, v)) {
+                    votes.splice(i, 1);
+                    score++;
+                    createParticles(v.x + v.width / 2, v.y + v.height / 2, "#FACC15", 8);
+
+                    // Verifica mudança de região a cada 10 votos
+                    if (score >= currentRegion.targetScore && currentLevel < regions.length - 1) {
+                        currentLevel++;
+                        baseSpeed += 0.65;
+                        regionBannerTimer = 110;
+                    }
+
+                    updateHUD();
+
+                    // Verifica Vitória (50 votos)
+                    if (score >= GOAL_VOTES) {
+                        isGameRunning = false;
+                        mobileControls.classList.add("hidden");
+                        const candName = candidates[selectedCandidateKey].name;
+                        winStats.innerText = `Parabéns! ${candName} conquistou os ${GOAL_VOTES} votos percorrendo todas as 5 regiões do Brasil!`;
+                        winScreen.classList.remove("hidden");
+                        return;
+                    }
+                } else if (v.x + v.width < -20) {
+                    votes.splice(i, 1);
+                } else {
+                    drawVote(v);
+                }
+            }
+
+            // 6. Gerar, Atualizar e Desenhar Obstáculos
+            spawnObstacle();
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.x -= obs.speed;
+
+                // Hitbox ligeiramente mais justa
+                const hitbox = {
+                    x: obs.x + 4,
+                    y: obs.y + 4,
+                    width: obs.width - 8,
+                    height: obs.height - 4
+                };
+
+                if (invulnerableTimer === 0 && checkRectCollision(player, hitbox)) {
+                    obstacles.splice(i, 1);
+                    lives--;
+                    invulnerableTimer = 55;
+                    createParticles(player.x + player.width / 2, player.y + player.height / 2, "#EF4444", 12);
+                    updateHUD();
+
+                    if (lives <= 0) {
+                        isGameRunning = false;
+                        mobileControls.classList.add("hidden");
+                        const candName = candidates[selectedCandidateKey].name;
+                        gameOverStats.innerText = `Os obstáculos bloquearam o caminho de ${candName}! Você coletou ${score} de ${GOAL_VOTES} votos.`;
+                        gameOverScreen.classList.remove("hidden");
+                        return;
+                    }
+                } else if (obs.x + obs.width < -30) {
+                    obstacles.splice(i, 1);
+                } else {
+                    drawObstacle(obs);
+                }
+            }
+
+            // 7. Partículas e Banner de Região
+            updateAndDrawParticles();
+            drawRegionBanner(currentRegion);
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Renderização imediata ao carregar a página (antes de iniciar)
+        function drawStaticPreview() {
+            initDecorations();
+            const initialRegion = regions[0];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground(initialRegion);
+            drawPlatforms(initialRegion);
+            drawCandidate(ctx, 110, GROUND_Y - player.height, player.width, player.height, candidates[selectedCandidateKey], 0);
+        }
+
+        // Listeners dos Botões de Tela
+        document.getElementById("start-game-btn").addEventListener("click", startGame);
+        document.getElementById("retry-btn").addEventListener("click", startGame);
+        document.getElementById("play-again-btn").addEventListener("click", startGame);
+        document.getElementById("menu-from-gameover-btn").addEventListener("click", returnToMenu);
+        document.getElementById("menu-from-win-btn").addEventListener("click", returnToMenu);
+
+        // Inicialização ao carregar
+        window.onload = function () {
+            renderAvatarPreviews();
+            drawStaticPreview();
+        };
+    </script>
+</body>
+</html>
